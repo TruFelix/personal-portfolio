@@ -100,13 +100,42 @@ export function AudioPlayer({
 		<div className="flex">
 			<button
 				className={cn(
-					"block cursor-pointer relative rounded-[6px] w-[360px] h-[48px] transition-colors duration-300 ease-in-out",
+					"grid grid-flow-col grid-cols-[auto_1fr] items-center block cursor-pointer rounded-[6px] w-full h-[48px] transition-colors duration-300 ease-in-out",
 					isPlaying ? "bg-[#282828]" : "bg-[rgba(138,138,138,0.65)]"
 				)}
 				data-name="AudioPlayer"
 			>
+				{/* Play/Pause Icon Container */}
 				<div
-					className="-translate-y-1/2 absolute content-stretch flex gap-[2px] h-[19px] items-center left-[12.01%] right-[3.6%] top-[calc(50%+0.5px)] transition-all duration-300"
+					className="size-[22px] mx-2 ml-3 flex justify-items-center items-center"
+					role="button"
+					tabIndex={0}
+					onClick={togglePlay}
+				>
+					<div className={cn(
+						"flex-none transition-all duration-300",
+						isPlaying ? "size-[18px]" : "size-[21px]"
+					)}>
+						{isPlaying ? (
+							// Pause Icon
+							<svg className="rotate-90" fill="none" preserveAspectRatio="1" viewBox="0 0 18 18">
+								<path
+									fillRule="evenodd"
+									clipRule="evenodd"
+									d={PAUSE_ICON_PATH}
+									fill="var(--fill-0, #D9D9D9)"
+								/>
+							</svg>
+						) : (
+							// Play Icon
+							<svg className="rotate-90 mt-[1px]" fill="none" preserveAspectRatio="1" viewBox="0 0 18.1865 15.75">
+								<path d={PLAY_ICON_PATH} fill="var(--fill-0, #D9D9D9)" />
+							</svg>
+						)}
+					</div>
+				</div>
+				<div
+					className="flex gap-[2px] mr-3 h-[19px] items-center transition-all duration-300"
 					ref={barsContainerRef}
 				>
 					{waveformData.map((value, index) => {
@@ -127,7 +156,7 @@ export function AudioPlayer({
 								key={index}
 								className={cn(
 									errorLoading && "bg-orange-600",
-									"bg-zink-300 grow w-[2px] rounded-[1px] transition-all duration-300",
+									"bg-zink-300 grow min-w-[2px] rounded-[1px] transition-all duration-300",
 									isPlaying && "shadow-[0px_0px_10px_0px_var(--primary)]",
 								)}
 								data-maxheight={height}
@@ -148,45 +177,6 @@ export function AudioPlayer({
 							/>
 						);
 					})}
-				</div>
-
-				{/* Play/Pause Icon Container */}
-				<div
-					className="-translate-y-1/2 absolute left-[10px] size-[18px] top-1/2"
-					role="button"
-					tabIndex={0}
-					onClick={togglePlay}
-				>
-					<div className="absolute flex inset-0 items-center justify-center">
-						<div className={cn(
-							"flex-none rotate-90 transition-all duration-300",
-							isPlaying ? "size-[18px]" : "size-[21px]"
-						)}>
-							<div className="relative size-full">
-								{isPlaying ? (
-									// Pause Icon
-									<svg className="absolute block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18 18">
-										<path
-											fillRule="evenodd"
-											clipRule="evenodd"
-											d={PAUSE_ICON_PATH}
-											fill="var(--fill-0, #D9D9D9)"
-										/>
-									</svg>
-								) : (
-									// Play Icon
-									// The paused play icon has a slightly different container in Figma:
-									// bottom-1/4 left-[6.7%] right-[6.7%] top-0
-									// We'll mimic the viewBox and simple centering.
-									<div className="absolute bottom-1/4 left-[6.7%] right-[6.7%] top-0">
-										<svg className="block size-full" fill="none" preserveAspectRatio="none" viewBox="0 0 18.1865 15.75">
-											<path d={PLAY_ICON_PATH} fill="var(--fill-0, #D9D9D9)" />
-										</svg>
-									</div>
-								)}
-							</div>
-						</div>
-					</div>
 				</div>
 			</button>
 			<div className="flex items-center ml-2">

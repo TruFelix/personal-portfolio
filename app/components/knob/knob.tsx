@@ -129,9 +129,9 @@ const Knob: React.FC<KnobProps> = ({ label, onChange, value: inputValue, step, m
     >
       <div style={{
         position: "absolute",
-        left: "2.2rem",
+        left: width ? `3px` : "2.2rem",
         minWidth: "2rem",
-        top: "1.5rem",
+        top: width ? `calc(${width}/4 - 1px)` :"1.5rem",
         background: "var(--background-color)",
         textAlign: "center",
         margin: 0,

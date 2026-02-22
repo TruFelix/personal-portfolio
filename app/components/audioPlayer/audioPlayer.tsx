@@ -1,6 +1,7 @@
 "use client"
 
-import { MouseEvent, useEffect, useRef, useState } from "react";
+import { MouseEvent, useContext, useEffect, useRef, useState } from "react";
+import { ActivePlayerContext } from "../contexts";
 import Knob from "../knob/knob";
 
 function cn(...inputs: unknown[]) {
@@ -36,6 +37,8 @@ export function AudioPlayer({
 	const maxVolume = 10;
 	const barsCount = 64;
 
+	const { activePlayer, setActivePlayer } = useContext(ActivePlayerContext);
+
 	const [isPlaying, setIsPlaying] = useState(false);
 	const [waveformData, setWaveformData] = useState<number[]>(new Array(barsCount).fill(0));
 	const [volume, setVolume] = useState<number>(8);
@@ -53,6 +56,8 @@ export function AudioPlayer({
 
 	// required to stop the indication of progress by animating the color of the bars
 	const currentAnimQueue = useRef<number>(0);
+
+	const volumePercent = (volume - minVolume) / maxVolume;
 
 	// Initialize AudioContext and load data
 	useEffect(() => {
@@ -81,7 +86,7 @@ export function AudioPlayer({
 	}, [isPlaying]);
 
 	useEffect(() => {
-		gainNodeRef.current?.gain.setValueAtTime((volume - minVolume) / maxVolume, 0);
+		gainNodeRef.current?.gain.setValueAtTime(volumePercent, 0);
 
 		barsContainerRef.current?.childNodes.forEach(b => updateBarHeight(b as HTMLElement));
 	}, [volume]);
@@ -97,7 +102,7 @@ export function AudioPlayer({
 	};
 
 	return (
-		<div className="flex">
+		<div className="grid grid-flow-col grid-cols-[1fr_auto] gap-1.5">
 			<button
 				className={cn(
 					"grid grid-flow-col grid-cols-[auto_1fr] items-center block cursor-pointer rounded-[6px] w-full h-[48px] transition-colors duration-300 ease-in-out",
@@ -142,7 +147,7 @@ export function AudioPlayer({
 						// Calculate height between 3px and 19px based on value (0..1)
 						// If value is very small, min height 3px.
 						// Max height 19px.
-						const height = Math.max(3, value * barsMaxHeight);
+						const height = Math.max(3, value * barsMaxHeight * volumePercent);
 
 						let timestampInSeconds: number | null = null;
 						if (audioBufferRef.current && audioContextRef.current) {
@@ -156,7 +161,7 @@ export function AudioPlayer({
 								key={index}
 								className={cn(
 									errorLoading && "bg-orange-600",
-									"bg-zink-300 grow min-w-[2px] rounded-[1px] transition-all duration-300",
+									"bg-zink-300 grow min-w-[1px] rounded-[1px] transition-all duration-300",
 									isPlaying && "shadow-[0px_0px_10px_0px_var(--primary)]",
 								)}
 								data-maxheight={height}
@@ -186,6 +191,7 @@ export function AudioPlayer({
 					value={volume}
 					onChange={setVolume}
 					label="vol"
+					width="38px"
 				/>
 			</div>
 		</div>
@@ -198,6 +204,10 @@ export function AudioPlayer({
 	}
 
 	async function Play() {
+		if (activePlayer?.url != audioUrl) {
+			activePlayer?.Pause();
+		}
+
 		if (!audioContextRef.current) {
 			console.error("audiocontext uninitialized");
 			return;
@@ -216,7 +226,7 @@ export function AudioPlayer({
 		source.buffer = audioBufferRef.current;
 
 		const gainNode = audioContextRef.current.createGain();
-		gainNode.gain.value = (volume - minVolume) / maxVolume;
+		gainNode.gain.value = volumePercent;
 		gainNode.connect(audioContextRef.current.destination);
 		source.connect(gainNode);
 
@@ -229,12 +239,16 @@ export function AudioPlayer({
 			// We'll leave it as manual toggle for now.
 		};
 
-		console.log("was paused at: ", globalPausedAtRef.current);
+		// console.log("was paused at: ", globalPausedAtRef.current);
 		source.start(0, globalPausedAtRef.current);
 		globalStartTimeRef.current = audioContextRef.current.currentTime;
 		sourceNodeRef.current = source;
 		gainNodeRef.current = gainNode;
 		setIsPlaying(true);
+		setActivePlayer({
+			url: audioUrl,
+			Pause,
+		});
 	}
 
 	function Pause() {
@@ -245,11 +259,12 @@ export function AudioPlayer({
 		globalPausedAtRef.current += (audioContextRef.current?.currentTime ?? 0) - globalStartTimeRef.current;
 		console.log("paused at: ", globalPausedAtRef.current);
 		setIsPlaying(false);
+		if (activePlayer?.url == audioUrl) setActivePlayer(null);
 	}
 
 	function updateBarHeight(bar: HTMLElement): void {
 		const maxHeight = Number.parseFloat(bar.getAttribute("data-maxheight")!);
-		bar.style.height = maxHeight * (volume - minVolume) / maxVolume + "px";
+		bar.style.height = maxHeight * volumePercent + "px";
 	}
 
 	function queueUpdateBarIndication(): void {
@@ -259,6 +274,7 @@ export function AudioPlayer({
 
 	function updateBarIndication(currentPlaytime: number): void {
 		if (!barsContainerRef.current) return;
+		if (errorLoading) return;
 
 		const audioLengthInSeconds = audioBufferRef.current?.duration ?? 0;
 		const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount;

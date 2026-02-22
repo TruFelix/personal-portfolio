@@ -9,6 +9,8 @@
   --primary: highlight;
   --primary: -apple-system-control-accent;
   --primary-dark: lab(from var(--primary) calc(l - 20) a b);
+
+  --font-emphasis: "Smooch sans";
 }
 
 @media (prefers-color-scheme: dark) {

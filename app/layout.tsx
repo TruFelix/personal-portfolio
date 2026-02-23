@@ -29,6 +29,18 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "trufelix portfolio",
   description: "Portfolio",
+  openGraph: {
+		title: "truFelix",
+		siteName: "truFelix",
+		countryName: "Austria",
+		type: 'website',
+		url: "https://trufelix.at",
+		description: "Portfolio",
+		images: {
+			href: "https://trufelix",
+			url: "https://trufelix/opengraph-image.png",
+		}
+	},
 };
 
 export default function RootLayout({

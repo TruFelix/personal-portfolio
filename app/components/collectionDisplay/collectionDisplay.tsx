@@ -13,8 +13,8 @@ const Card = ({ children, className }: React.PropsWithChildren & React.HTMLProps
 
 export default function CollectionDisplay({ collection }: CollectionDisplayProps) {
 	return <>
-		<Card className="w-full my-3 bg-zinc-200/20 gap-3">
-			<span className="gap-3">
+		<Card className="w-full my-3 bg-zinc-200/20">
+			<span className="gap-3 mb-6">
 				<div className="float-left pr-3 transition-w duration-300">
 					<Image
 						width="128"
@@ -24,11 +24,14 @@ export default function CollectionDisplay({ collection }: CollectionDisplayProps
 						alt="Cover image of 23 : 25"
 					/>
 				</div>
-				<h2 className="text-xl/3.5 mb-2 align-text-top font-semibold w-fit text-nowrap">{collection.title}</h2>
-				<span className="text-base/5 font-emphasis align-text-bottom">
-					{
-						collection.description?.split("\n").map((c, i) => <p key={i} className="mb-2">{c}</p>)
-					}
+				<h2 className="text-[30px] leading-[35px] mb-2 align-text-top font-[600] font-title text-nowrap">
+					{collection.title}
+				</h2>
+				<span className="text-[20px] leading-[1.35rem] font-[600] font-stretch-expanded font-emphasis align-text-bottom">
+					{collection.years} {collection.characteristics?.length && "–"} {collection.characteristics?.map((c,i) => `${i ? '•' : ''} ${c} `)}
+				</span>
+				<span className="text-[20px] leading-[1.35rem] font-[450] font-stretch-expanded font-emphasis align-text-bottom">
+					{collection.description?.split("\n").map((c, i, a) => <p key={i} className={i != a.length - 1 ? "mb-2" : ""}>{c}</p>)}
 				</span>
 			</span>
 			<div className="grid gap-1.5">

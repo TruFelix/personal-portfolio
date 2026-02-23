@@ -1,0 +1,14 @@
+<svg width="100" height="100" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+	<style>
+		@media (prefers-color-scheme: dark) {
+			#background {
+				fill: #111111;
+			}
+			#stroke {
+				fill: #EAEAEA;
+			}
+		}
+	</style>
+	<rect id="background" width="100" height="100" rx="16" fill="#FAFAFA"/>
+		<path id="stroke" d="M17 18L47 18M83.5 18L47 18M47 18V50.5M47 83V50.5M47 50.5H73.2895" stroke="#272727" stroke-width="9" stroke-linecap="round"/>
+</svg>

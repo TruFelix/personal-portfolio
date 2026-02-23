@@ -140,7 +140,7 @@ export function AudioPlayer({
 					</div>
 				</div>
 				<div
-					className="flex gap-[2px] mr-3 h-[19px] items-center transition-all duration-300"
+					className="flex mr-3 h-[19px] items-center transition-all duration-300"
 					ref={barsContainerRef}
 				>
 					{waveformData.map((value, index) => {
@@ -161,7 +161,7 @@ export function AudioPlayer({
 								key={index}
 								className={cn(
 									errorLoading && "bg-orange-600",
-									"bg-zink-300 grow min-w-[1px] rounded-[1px] transition-all duration-300",
+									"bg-zink-300 grow min-w-[1px] rounded-[1px] transition-all duration-300 px-[1px] mx-[1px]",
 									isPlaying && "shadow-[0px_0px_10px_0px_var(--primary)]",
 								)}
 								data-maxheight={height}

@@ -10,7 +10,6 @@
   --primary: -apple-system-control-accent;
   --primary-dark: lab(from var(--primary) calc(l - 20) a b);
 
-  --font-emphasis: "Smooch sans";
 }
 
 @media (prefers-color-scheme: dark) {
@@ -27,6 +26,8 @@
   --color-primary-500: var(--primary);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
+  --font-emphasis: "Smooch sans";
+  --font-title: "Space Grotesk";
 }
 
 body {

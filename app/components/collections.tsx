@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import CollectionDisplay from "./collectionDisplay/collectionDisplay";
-import { ActivePlayerContext } from "./contexts";
+import { Collection } from "./collectionDisplay/model";
+import { ActivePlayerContext, Player } from "./contexts";
 
 export default function Collections({ collections }: { collections: Collection[] }) {
 	const [activePlayer, setActivePlayer] = useState<Player | null | undefined>(undefined);

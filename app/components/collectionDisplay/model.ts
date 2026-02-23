@@ -1,7 +1,7 @@
 export interface Collection {
 	coverImgUrl: string;
 	title: string;
-	description?: React.ReactNode;
+	description?: string | undefined | null;
 	songs: Song[];
 }
 

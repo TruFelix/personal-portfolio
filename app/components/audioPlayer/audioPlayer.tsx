@@ -245,7 +245,7 @@ export function AudioPlayer({
 		sourceNodeRef.current = source;
 		gainNodeRef.current = gainNode;
 		setIsPlaying(true);
-		setActivePlayer({
+		setActivePlayer?.({
 			url: audioUrl,
 			Pause,
 		});
@@ -259,7 +259,7 @@ export function AudioPlayer({
 		globalPausedAtRef.current += (audioContextRef.current?.currentTime ?? 0) - globalStartTimeRef.current;
 		console.log("paused at: ", globalPausedAtRef.current);
 		setIsPlaying(false);
-		if (activePlayer?.url == audioUrl) setActivePlayer(null);
+		if (activePlayer?.url == audioUrl) setActivePlayer?.(null);
 	}
 
 	function updateBarHeight(bar: HTMLElement): void {

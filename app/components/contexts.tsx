@@ -7,5 +7,5 @@ export interface Player {
 
 export const ActivePlayerContext = createContext<{
 	activePlayer: Player | null | undefined;
-	setActivePlayer: Dispatch<SetStateAction<Player | null | undefined>>;
+	setActivePlayer: Dispatch<SetStateAction<Player | null | undefined>> | undefined;
 }>({activePlayer: undefined, setActivePlayer: undefined});

@@ -9,13 +9,13 @@ export interface CollectionDisplayProps extends React.PropsWithChildren {
 }
 
 const Card = ({ children, className }: React.PropsWithChildren & React.HTMLProps<HTMLElement>) =>
-	<div className={`rounded-xl overflow-hidden p-6 shadow-lg grid ${className}`}>{children}</div>;
+	<div className={`rounded-xl overflow-hidden p-3 md:p-6 shadow-lg grid ${className}`}>{children}</div>;
 
 export default function CollectionDisplay({ collection }: CollectionDisplayProps) {
 	return <>
-		<Card className="w-full my-3 bg-zinc-200/20">
-			<span className="gap-3 mb-6">
-				<div className="float-left pr-3 transition-w duration-300">
+		<Card className="w-full bg-zinc-200/20">
+			<span className="gap-3 mb-6 px-2">
+				<div className="float-left pr-3 transition-w duration-300" style={{marginLeft: "calc(-2 * var(--spacing))"}}>
 					<Image
 						width="128"
 						height="128"
@@ -24,18 +24,19 @@ export default function CollectionDisplay({ collection }: CollectionDisplayProps
 						alt="Cover image of 23 : 25"
 					/>
 				</div>
-				<h2 className="text-[30px] leading-[35px] mb-2 align-text-top font-[600] font-title text-nowrap">
+				<h2 className="font-title text-[30px] leading-[35px] font-[600] mb-2 align-text-top text-nowrap">
 					{collection.title}
 				</h2>
-				<span className="text-[20px] leading-[1.35rem] font-[600] font-stretch-expanded font-emphasis align-text-bottom">
+				<span className="font-emphasis text-[20px] md:leading-[1.5rem] leading-[1.35rem] mb-2 font-[600] align-text-bottom md:inline-block">
 					{collection.years} {collection.characteristics?.length && "–"} {collection.characteristics?.map((c,i) => `${i ? '•' : ''} ${c} `)}
 				</span>
-				<span className="text-[20px] leading-[1.35rem] font-[450] font-stretch-expanded font-emphasis align-text-bottom">
-					{collection.description?.split("\n").map((c, i, a) => <p key={i} className={i != a.length - 1 ? "mb-2" : ""}>{c}</p>)}
+				<div className="h-3 md:h-0"/>
+				<span className="font-emphasis text-[20px] leading-[1.35rem] mt-2 font-[450] align-text-bottom inline-block">
+					{collection.description?.split("\n").map((c, i, a) => <p key={i} className={i != a.length - 1 ? "mb-1" : ""}>{c}</p>)}
 				</span>
 			</span>
 			<div className="grid gap-1.5">
-				{collection.songs.map(song => <AudioPlayer key={song.url} audioUrl={song.url} />)}
+				{collection.songs.map(song => <AudioPlayer key={song.url} audioUrl={song.url}/>)}
 			</div>
 		</Card>
 	</>;

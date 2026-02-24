@@ -4,7 +4,7 @@ Experimente, die ich in ganze Songs ausgebaut habe.
 Verwendung von verschiedensten Instrumenten und Genres.
 Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl sowie Verwendung von Effekten.`,
 
-  "debris description": `Erstellt für das Spiel “debris”, verwendet als Hintergrundmusik.`,
+  "debris description": `Erstellt für das Spiel "debris", verwendet als Hintergrundmusik.`,
 
   "portfolio": "Portfolio",
   "music": "Musik",
@@ -17,4 +17,5 @@ Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl s
 	"characteristics.pads": "Pads",
 	"characteristics.synths": "Synths",
 	"characteristics.samples": "Samples",
+  "characteristics.loops": "loops",
 } as const

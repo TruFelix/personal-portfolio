@@ -1,12 +1,9 @@
 "use client"
 
-import { MouseEvent, useContext, useEffect, useRef, useState } from "react";
+import { MouseEvent, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { ActivePlayerContext } from "../contexts";
 import Knob from "../knob/knob";
-
-function cn(...inputs: unknown[]) {
-	return inputs.join(" ")
-}
+import { useWindowSize } from "../utils";
 
 // SVG Paths from Figma
 const PLAY_ICON_PATH = "M9.09327 0L18.1865 15.75H0L9.09327 0Z";
@@ -17,7 +14,8 @@ interface AudioPlayerProps {
 	barPlayedColor?: string,
 	barNotPlayedColor?: string,
 	barPlayedNotPlayingColor?: string,
-	barsMaxHeight?: number
+	barsMaxHeight?: number,
+	barsCount?: number,
 }
 
 /**
@@ -35,12 +33,18 @@ export function AudioPlayer({
 }: AudioPlayerProps) {
 	const minVolume = 0;
 	const maxVolume = 10;
-	const barsCount = 64;
+
+	const size = useWindowSize(null);
+	// console.log("size: ", size);
+	const isMobile = size?.width < 600;
+	const barsCount = useRef<number>(80);
+	barsCount.current = useMemo(() => isMobile ? 48 : 80, [isMobile]);
 
 	const { activePlayer, setActivePlayer } = useContext(ActivePlayerContext);
 
+	const [isAudioLoaded, setIsAudioLoaded] = useState<boolean>(false);
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [waveformData, setWaveformData] = useState<number[]>(new Array(barsCount).fill(0));
+	const [waveformData, setWaveformData] = useState<number[]>(new Array(barsCount.current).fill(0));
 	const [volume, setVolume] = useState<number>(8);
 	const [errorLoading, setErrorLoading] = useState<boolean>(false);
 
@@ -57,11 +61,13 @@ export function AudioPlayer({
 	// required to stop the indication of progress by animating the color of the bars
 	const currentAnimQueue = useRef<number>(0);
 
-	const volumePercent = (volume - minVolume) / maxVolume;
+	const volumePercent = useMemo(() => (volume - minVolume) / maxVolume, [volume, minVolume, maxVolume]);
 
 	// Initialize AudioContext and load data
 	useEffect(() => {
-		loadAudio();
+		const loadingInterval = setInterval(() => animateBarsLoading(0.75, 3), 100);
+		loadAudio().then(() => clearInterval(loadingInterval));
+
 
 		return () => {
 			if (audioContextRef.current) {
@@ -70,20 +76,42 @@ export function AudioPlayer({
 		};
 	}, [audioUrl]);
 
+	const memoizedWaveformData = useMemo(() => {
+		if (isAudioLoaded) return CalculateWaveform(barsCount.current);
+		return waveformData;
+	}, [isAudioLoaded, barsCount.current]);
+
 	useEffect(() => {
-		const cleanup = () => { };
+		// console.log("barsCount: ", barsCount);
+		setWaveformData(memoizedWaveformData);
+
+		if (audioBufferRef.current) {
+			setWaveformData(memoizedWaveformData);
+
+			// don't use currentTime, because it has already setup start and pause times
+			updateBarIndication(globalPausedAtRef.current);
+		}
+	}, [isAudioLoaded, memoizedWaveformData]);
+
+	useEffect(() => {
+		const cleanup = () => {
+			cancelAnimationFrame(currentAnimQueue.current);
+		};
 
 		// don't use currentTime, because it has already setup start and pause times
 		updateBarIndication(globalPausedAtRef.current);
 
-		if (!isPlaying) {
-			cancelAnimationFrame(currentAnimQueue.current)
+		if (!isPlaying || (activePlayer && activePlayer.url != audioUrl)) {
+			cleanup();
 			return cleanup;
 		}
-		currentAnimQueue.current = window.requestAnimationFrame(queueUpdateBarIndication);
+
+		if ((activePlayer && activePlayer.url === audioUrl) || !activePlayer) {
+			currentAnimQueue.current = window.requestAnimationFrame(queueUpdateBarIndication);
+		}
 
 		return cleanup;
-	}, [isPlaying]);
+	}, [isPlaying, activePlayer?.url]);
 
 	useEffect(() => {
 		gainNodeRef.current?.gain.setValueAtTime(volumePercent, 0);
@@ -106,7 +134,7 @@ export function AudioPlayer({
 			<button
 				className={cn(
 					"grid grid-flow-col grid-cols-[auto_1fr] items-center block cursor-pointer rounded-[6px] w-full h-[48px] transition-colors duration-300 ease-in-out",
-					isPlaying ? "bg-[#282828]" : "bg-[rgba(138,138,138,0.65)]"
+					isPlaying ? "bg-neutral-100 dark:bg-neutral-700" : "bg-neutral-100 dark:bg-[rgba(138,138,138,0.65)]"
 				)}
 				data-name="AudioPlayer"
 			>
@@ -128,13 +156,15 @@ export function AudioPlayer({
 									fillRule="evenodd"
 									clipRule="evenodd"
 									d={PAUSE_ICON_PATH}
-									fill="var(--fill-0, #D9D9D9)"
+									className="fill-neutral-400 dark:fill-neutral-300"
 								/>
 							</svg>
 						) : (
 							// Play Icon
 							<svg className="rotate-90 mt-[1px]" fill="none" preserveAspectRatio="1" viewBox="0 0 18.1865 15.75">
-								<path d={PLAY_ICON_PATH} fill="var(--fill-0, #D9D9D9)" />
+								<path d={PLAY_ICON_PATH}
+									className="fill-neutral-400 dark:fill-neutral-300"
+								/>
 							</svg>
 						)}
 					</div>
@@ -152,20 +182,28 @@ export function AudioPlayer({
 						let timestampInSeconds: number | null = null;
 						if (audioBufferRef.current && audioContextRef.current) {
 							const audioLengthInSeconds = audioBufferRef.current?.duration ?? 0
-							const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount;
+							const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount.current;
 							timestampInSeconds = timeAdvancePerBarInSeconds * (index + 1);
 						}
+						const currentT = currentTime();
 
 						return (
 							<div
 								key={index}
 								className={cn(
 									errorLoading && "bg-orange-600",
-									"bg-zink-300 grow min-w-[1px] rounded-[1px] transition-all duration-300 px-[1px] mx-[1px]",
-									isPlaying && "shadow-[0px_0px_10px_0px_var(--primary)]",
+									"bg-zinc-300 grow min-w-[1px] rounded-[1px] transition-all duration-300 mx-[1px]",
+									isPlaying && "dark:shadow-[0px_0px_10px_0px_var(--primary)]",
+									// isPlaying && (timestampInSeconds < currentT
+									// 	? "shadow-[0px_0px_10px_0px_var(--color-primary-transparent-500)]"
+									// 	: `shadow-[0px_0px_5px_0px_gray] shadow-color-[gray]`)
 								)}
 								data-maxheight={height}
-								style={{ height: `${height}px` }}
+								style={{
+									height: `${height}px`,
+									backgroundColor: barBackgroundColorFromTimestamp(timestampInSeconds, currentT),
+									// boxShadow: barShadowFromTimestamp(timestampInSeconds, currentT)
+								}}
 								onMouseUp={e => {
 									if (timestampInSeconds != null) {
 										e.bubbles = false;
@@ -277,22 +315,41 @@ export function AudioPlayer({
 		if (errorLoading) return;
 
 		const audioLengthInSeconds = audioBufferRef.current?.duration ?? 0;
-		const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount;
+		const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount.current;
 		let timestampInSeconds = 0.000001;
 
 		for (let barIndex = 0; barIndex < barsContainerRef.current.childNodes.length; barIndex++) {
 			timestampInSeconds += timeAdvancePerBarInSeconds;
-			const bar = barsContainerRef.current.childNodes.item(barIndex) as HTMLElement;
+			const bar = barsContainerRef.current.childNodes.item(barIndex) as HTMLDivElement;
+			bar.style.backgroundColor = barBackgroundColorFromTimestamp(timestampInSeconds, currentPlaytime);
+			bar.style.boxShadow = barShadowFromTimestamp(timestampInSeconds, currentPlaytime);
+			console.log(bar.style.boxShadow);
+		}
+	}
 
-			if (timestampInSeconds <= currentPlaytime) {
-				if (isPlaying) {
-					bar.style.backgroundColor = barPlayedColor;
-				} else {
-					bar.style.backgroundColor = barPlayedNotPlayingColor;
-				}
+	function barBackgroundColorFromTimestamp(timestampInSeconds: number, currentPlaytime: number): string | undefined {
+		if (!isAudioLoaded) return undefined;
+
+		if (timestampInSeconds <= currentPlaytime) {
+			if (isPlaying) {
+				return barPlayedColor;
 			} else {
-				bar.style.backgroundColor = barNotPlayedColor;
+				return barPlayedNotPlayingColor;
 			}
+		} else {
+			return barNotPlayedColor;
+		}
+	}
+	function barShadowFromTimestamp(timestampInSeconds: number, currentPlaytime: number): string | null | undefined {
+		const isDarkTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')?.matches;
+		if (isDarkTheme) return null;
+
+		if (!isPlaying) return null;
+
+		if (timestampInSeconds < currentPlaytime) {
+			return "0px 0px 10px 0px var(--color-primary-transparent-500)";
+		} else {
+			return "0px 0px 2.5px 0px rgb(from gray r g b / 0.2)";
 		}
 	}
 
@@ -301,6 +358,14 @@ export function AudioPlayer({
 		return t;
 	}
 
+	/** Animates the wavebarData to create a loading animation */
+	function animateBarsLoading(freq: number = 1, travelspeed:number=1) {
+		const millis = new Date().valueOf();
+		const tmp = new Array(barsCount.current).fill(0).map((_, i) => (Math.sin(i/3*freq - millis/500*travelspeed)+1)/2);
+		setWaveformData(tmp);
+	}
+
+	//#region audio loading and computation
 	async function loadAudio() {
 		try {
 			const AudioContext = window.AudioContext;
@@ -309,20 +374,25 @@ export function AudioPlayer({
 
 			const response = await fetch(audioUrl);
 			if (!response.ok) {
+				setIsAudioLoaded(false);
 				setErrorLoading(true);
 				return;
 			}
 			const arrayBuffer = await response.arrayBuffer();
 			const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
 			audioBufferRef.current = decodedBuffer;
-
-			const normalizedWaveformData = NormalizeWaveform(Waveform(decodedBuffer, barsCount));
-
-			setWaveformData(normalizedWaveformData);
+			setIsAudioLoaded(true);
 		} catch (error) {
 			console.error("Failed to load audio:", error);
 			setErrorLoading(true);
+			setIsAudioLoaded(false);
 		}
+	}
+
+	function CalculateWaveform(bars: number): number[] {
+		const normalizedWaveformData = NormalizeWaveform(Waveform(audioBufferRef.current, bars));
+		return normalizedWaveformData;
+		// setWaveformData(normalizedWaveformData);
 	}
 
 	function NormalizeWaveform(waveformData: number[]): number[] {
@@ -335,7 +405,7 @@ export function AudioPlayer({
 	 * Generates the waveform data from the raw audio
 	 * @param decodedBuffer the raw audio buffer
 	 * @returns
-	 */
+	*/
 	function Waveform(decodedBuffer: AudioBuffer, totalWaveformpoints: number): number[] {
 		const rawData = decodedBuffer.getChannelData(0);
 		const blockSize = Math.floor(rawData.length / totalWaveformpoints);
@@ -351,4 +421,9 @@ export function AudioPlayer({
 
 		return filteredData;
 	}
+	//#endregion
+}
+
+function cn(...inputs: unknown[]) {
+	return inputs.join(" ")
 }

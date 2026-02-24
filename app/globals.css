@@ -6,10 +6,8 @@
   --foreground: #171717;
 
   --primary: oklab(81.818% -0.131 -0.04489);
-  --primary: highlight;
-  --primary: -apple-system-control-accent;
   --primary-dark: lab(from var(--primary) calc(l - 20) a b);
-
+  --primary-transparent: oklab(81.818% -0.131 -0.04489 / 0.502);
 }
 
 @media (prefers-color-scheme: dark) {
@@ -24,10 +22,12 @@
   --color-background: var(--background);
   --color-foreground: var(--foreground);
   --color-primary-500: var(--primary);
+  --color-primary-transparent-500: var(--primary-transparent);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
   --font-emphasis: "Smooch sans";
   --font-title: "Space Grotesk";
+
 }
 
 body {

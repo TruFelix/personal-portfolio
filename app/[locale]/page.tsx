@@ -1,14 +1,9 @@
-
-
-
-import { getStaticParams } from '../../locales/server';
+import MusicLayout from './music/layout';
 import MusicPortfolio from './music/page';
 
-export function generateStaticParams() {
-  return getStaticParams()
-}
-
-export default async function Home({ params }: { params: Promise<{ locale: string }> }) {
+export default function Home() {
   // as long as there is nothing more than music just mirror it here
-  return <MusicPortfolio params={params}/>
+  return <MusicLayout>
+    <MusicPortfolio />
+  </MusicLayout>
 }

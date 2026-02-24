@@ -1,24 +1,13 @@
 import { Collection } from "../../components/collectionDisplay/model";
 
-import { getI18n, getScopedI18n } from '../../../locales/server';
+import { getTranslations } from 'next-intl/server';
 
-import { setStaticParamsLocale } from 'next-international/server';
-
-import { getStaticParams } from '../../../locales/server';
 import Collections from "../../components/collections";
 
-export function generateStaticParams() {
-  return getStaticParams()
-}
-
-export default async function MusicPortfolio({ params }: { params: Promise<{ locale: string }> }) {
-  const { locale } = await params;
-
-  setStaticParamsLocale(locale);
-
-  const t = await getI18n();
-  const ts = await getScopedI18n("music");
-  const tC = await getScopedI18n("characteristics");
+export default async function MusicPortfolio() {
+  const t = await getTranslations();
+  const ts = await getTranslations("music");
+  const tC = await getTranslations("characteristics");
 
   const collections: Collection[] = [
     {
@@ -49,17 +38,33 @@ export default async function MusicPortfolio({ params }: { params: Promise<{ loc
     }
   ];
 
+  const mail = "trutschnigfelix@gmail.com";
+
   return (
-    <div className="flex justify-center min-h-screen bg-zinc-50 font-sans dark:bg-black">
+    <div className="grid justify-items-center min-h-screen bg-zinc-50 font-sans dark:bg-black">
       <main className="grid w-full content-start justify-center max-w-3xl min-h-screen md:px-16 px-3 py-3 bg-white dark:bg-black">
-        <div className="mt-5 mb-12 md:mx-0 mx-3">
+        <div className="mt-5 mb-2 md:mx-0 mx-3">
           <h1 className="text-5xl font-black">{t("portfolio")}</h1>
-          <p className="text-xl font-semibold ml-6">{t("music")}</p>
+          <p className="text-xl font-semibold ml-6">{t("music.music")}</p>
         </div>
-        <div className="mx-4 md:mx-6 mb-6">
-          {ts("description")}
+        <div className="mx-4 md:mx-6 my-8">
+          <span className="font-emphasis text-[24px] font-[600] leading-[1.6rem] dark:text-shadow-[0_0_9px_var(--foreground)]">
+            {ts("description")}
+          </span>
         </div>
-        <Collections className="max-w-2xl grid gap-15" collections={collections} />
+        <Collections className="max-w-2xl grid gap-15 mb-6" collections={collections} />
+        {/* <Image
+          alt="retro tape player"
+          height="502"
+          width="371"
+          className="max-w-100 mt-6"
+          src="/Player-Mobile.svg"
+          /> */}
+        <div className="flex justify-center mx-4 md:mx-6 my-8">
+          <span className="font-emphasis text-[24px] font-[600] leading-[1.6rem] dark:text-shadow-[0_0_9px_var(--foreground)]">
+            {t("motto")}
+          </span>
+        </div>
       </main>
     </div>
   );

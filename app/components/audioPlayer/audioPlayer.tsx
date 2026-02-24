@@ -34,17 +34,15 @@ export function AudioPlayer({
 	const minVolume = 0;
 	const maxVolume = 10;
 
-	const size = useWindowSize(null);
-	// console.log("size: ", size);
-	const isMobile = size?.width ?? 0 < 600;
-	const barsCount = useRef<number>(80);
-	barsCount.current = useMemo(() => isMobile ? 48 : 80, [isMobile]);
-
 	const { activePlayer, setActivePlayer } = useContext(ActivePlayerContext);
+
+	const size = useWindowSize(null);
+	const isMobile = size?.width ?? 0 < 600;
+	const [barsCount, setBarsCount] = useState<number>(isMobile ? 48 : 80);
 
 	const [isAudioLoaded, setIsAudioLoaded] = useState<boolean>(false);
 	const [isPlaying, setIsPlaying] = useState(false);
-	const [waveformData, setWaveformData] = useState<number[]>(new Array(barsCount.current).fill(0));
+	const [waveformData, setWaveformData] = useState<number[]>(new Array(barsCount).fill(0));
 	const [volume, setVolume] = useState<number>(8);
 	const [errorLoading, setErrorLoading] = useState<boolean>(false);
 
@@ -63,6 +61,12 @@ export function AudioPlayer({
 
 	const volumePercent = useMemo(() => (volume - minVolume) / maxVolume, [volume, minVolume, maxVolume]);
 
+	useEffect(() => {
+		// console.log("size: ", size?.width, "barsCount: ", barsCount);
+		const isMobile = (size?.width ?? 0) < 600;
+		setBarsCount(isMobile ? 48 : 80);
+	}, [size]);
+
 	// Initialize AudioContext and load data
 	useEffect(() => {
 		const loadingInterval = setInterval(() => animateBarsLoading(0.75, 3), 100);
@@ -77,9 +81,9 @@ export function AudioPlayer({
 	}, [audioUrl]);
 
 	const memoizedWaveformData = useMemo(() => {
-		if (isAudioLoaded && audioBufferRef.current) return CalculateWaveform(barsCount.current) as number[];
+		if (isAudioLoaded && audioBufferRef.current) return CalculateWaveform(barsCount) as number[];
 		return waveformData;
-	}, [isAudioLoaded, barsCount.current]);
+	}, [isAudioLoaded, barsCount, isMobile]);
 
 	useEffect(() => {
 		// console.log("barsCount: ", barsCount);
@@ -182,7 +186,7 @@ export function AudioPlayer({
 						let timestampInSeconds: number | null = null;
 						if (audioBufferRef.current && audioContextRef.current) {
 							const audioLengthInSeconds = audioBufferRef.current?.duration ?? 0
-							const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount.current;
+							const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount;
 							timestampInSeconds = timeAdvancePerBarInSeconds * (index + 1);
 						}
 						const currentT = currentTime();
@@ -315,7 +319,7 @@ export function AudioPlayer({
 		if (errorLoading) return;
 
 		const audioLengthInSeconds = audioBufferRef.current?.duration ?? 0;
-		const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount.current;
+		const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount;
 		let timestampInSeconds = 0.000001;
 
 		for (let barIndex = 0; barIndex < barsContainerRef.current.childNodes.length; barIndex++) {
@@ -323,7 +327,7 @@ export function AudioPlayer({
 			const bar = barsContainerRef.current.childNodes.item(barIndex) as HTMLDivElement;
 			bar.style.backgroundColor = barBackgroundColorFromTimestamp(timestampInSeconds, currentPlaytime) ?? "";
 			bar.style.boxShadow = barShadowFromTimestamp(timestampInSeconds, currentPlaytime) ?? "";
-			console.log(bar.style.boxShadow);
+			// console.log(bar.style.boxShadow);
 		}
 	}
 
@@ -361,7 +365,7 @@ export function AudioPlayer({
 	/** Animates the wavebarData to create a loading animation */
 	function animateBarsLoading(freq: number = 1, travelspeed: number = 1) {
 		const millis = new Date().valueOf();
-		const tmp = new Array(barsCount.current).fill(0).map((_, i) => (Math.sin(i / 3 * freq - millis / 500 * travelspeed) + 1) / 2);
+		const tmp = new Array(barsCount).fill(0).map((_, i) => (Math.sin(i / 3 * freq - millis / 500 * travelspeed) + 1) / 2);
 		setWaveformData(tmp);
 	}
 

@@ -31,7 +31,7 @@ export default function CollectionDisplay({ collection }: CollectionDisplayProps
 					{collection.years} {collection.characteristics?.length && "–"} {collection.characteristics?.map((c,i) => `${i ? '•' : ''} ${c} `)}
 				</span>
 				<div className="h-3 md:h-0"/>
-				<span className="font-emphasis text-[20px] leading-[1.35rem] mt-2 font-[450] align-text-bottom inline-block">
+				<span className="font-emphasis text-[22px] leading-[1.35rem] mt-2 font-[450] align-text-bottom inline-block">
 					{collection.description?.split("\n").map((c, i, a) => <p key={i} className={i != a.length - 1 ? "mb-1" : ""}>{c}</p>)}
 				</span>
 			</span>

@@ -1,10 +1,14 @@
-import { createI18nMiddleware } from 'next-international/middleware'
-import { NextRequest } from 'next/server'
+import { NextRequest } from 'next/server';
 
-const I18nMiddleware = createI18nMiddleware({
+import createMiddleware from 'next-intl/middleware';
+import { routing } from './i18n/routing';
+
+export default createMiddleware(routing);
+
+const I18nMiddleware = createMiddleware({
   locales: ['en', 'de'],
   defaultLocale: 'en',
-  urlMappingStrategy: 'rewrite'
+  // urlMappingStrategy: 'rewrite'
 })
 
 export function proxy(request: NextRequest) {

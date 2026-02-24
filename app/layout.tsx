@@ -1,4 +1,7 @@
+import { routing } from '@/i18n/routing';
 import type { Metadata } from "next";
+import { Locale, NextIntlClientProvider } from "next-intl";
+import { setRequestLocale } from 'next-intl/server';
 import { Fahkwang, Geist, Geist_Mono, Smooch_Sans, Space_Grotesk } from "next/font/google";
 import "./globals.css";
 
@@ -30,31 +33,38 @@ export const metadata: Metadata = {
   title: "trufelix portfolio",
   description: "Portfolio",
   openGraph: {
-		title: "truFelix",
-		siteName: "truFelix",
-		countryName: "Austria",
-		type: 'website',
-		url: "https://trufelix.at",
-		description: "Portfolio",
-		images: {
-			href: "https://trufelix",
-			url: "https://trufelix/opengraph-image.png",
-		}
-	},
+    title: "truFelix",
+    siteName: "truFelix",
+    countryName: "Austria",
+    type: 'website',
+    url: "https://trufelix.at",
+    description: "Portfolio",
+    images: {
+      href: "https://trufelix",
+      url: "https://trufelix/opengraph-image.png",
+    }
+  },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
-  return (
-    <html lang="en">
+export function generateStaticParams() {
+  return routing.locales.map((locale) => ({ locale }));
+}
+
+export default async function RootLayout(props: LayoutProps<"/">) {
+  return <InternationalizationLayout {...props} locale='en'/>
+}
+
+export function InternationalizationLayout({children, locale}: LayoutProps<"/"> & {locale: Locale}) {
+  // Enable static rendering
+  setRequestLocale(locale);
+
+  return <html lang={locale}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >
-        {children}
+        <NextIntlClientProvider>
+          {children}
+        </NextIntlClientProvider>
       </body>
     </html>
-  );
 }

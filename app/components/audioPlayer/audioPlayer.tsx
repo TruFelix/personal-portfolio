@@ -36,7 +36,7 @@ export function AudioPlayer({
 
 	const size = useWindowSize(null);
 	// console.log("size: ", size);
-	const isMobile = size?.width < 600;
+	const isMobile = size?.width ?? 0 < 600;
 	const barsCount = useRef<number>(80);
 	barsCount.current = useMemo(() => isMobile ? 48 : 80, [isMobile]);
 
@@ -77,7 +77,7 @@ export function AudioPlayer({
 	}, [audioUrl]);
 
 	const memoizedWaveformData = useMemo(() => {
-		if (isAudioLoaded) return CalculateWaveform(barsCount.current);
+		if (isAudioLoaded && audioBufferRef.current) return CalculateWaveform(barsCount.current) as number[];
 		return waveformData;
 	}, [isAudioLoaded, barsCount.current]);
 
@@ -201,7 +201,7 @@ export function AudioPlayer({
 								data-maxheight={height}
 								style={{
 									height: `${height}px`,
-									backgroundColor: barBackgroundColorFromTimestamp(timestampInSeconds, currentT),
+									backgroundColor: barBackgroundColorFromTimestamp(timestampInSeconds ?? 0, currentT),
 									// boxShadow: barShadowFromTimestamp(timestampInSeconds, currentT)
 								}}
 								onMouseUp={e => {
@@ -321,8 +321,8 @@ export function AudioPlayer({
 		for (let barIndex = 0; barIndex < barsContainerRef.current.childNodes.length; barIndex++) {
 			timestampInSeconds += timeAdvancePerBarInSeconds;
 			const bar = barsContainerRef.current.childNodes.item(barIndex) as HTMLDivElement;
-			bar.style.backgroundColor = barBackgroundColorFromTimestamp(timestampInSeconds, currentPlaytime);
-			bar.style.boxShadow = barShadowFromTimestamp(timestampInSeconds, currentPlaytime);
+			bar.style.backgroundColor = barBackgroundColorFromTimestamp(timestampInSeconds, currentPlaytime) ?? "";
+			bar.style.boxShadow = barShadowFromTimestamp(timestampInSeconds, currentPlaytime) ?? "";
 			console.log(bar.style.boxShadow);
 		}
 	}
@@ -359,9 +359,9 @@ export function AudioPlayer({
 	}
 
 	/** Animates the wavebarData to create a loading animation */
-	function animateBarsLoading(freq: number = 1, travelspeed:number=1) {
+	function animateBarsLoading(freq: number = 1, travelspeed: number = 1) {
 		const millis = new Date().valueOf();
-		const tmp = new Array(barsCount.current).fill(0).map((_, i) => (Math.sin(i/3*freq - millis/500*travelspeed)+1)/2);
+		const tmp = new Array(barsCount.current).fill(0).map((_, i) => (Math.sin(i / 3 * freq - millis / 500 * travelspeed) + 1) / 2);
 		setWaveformData(tmp);
 	}
 
@@ -389,7 +389,8 @@ export function AudioPlayer({
 		}
 	}
 
-	function CalculateWaveform(bars: number): number[] {
+	function CalculateWaveform(bars: number): number[] | undefined {
+		if (!audioBufferRef.current) return undefined;
 		const normalizedWaveformData = NormalizeWaveform(Waveform(audioBufferRef.current, bars));
 		return normalizedWaveformData;
 		// setWaveformData(normalizedWaveformData);

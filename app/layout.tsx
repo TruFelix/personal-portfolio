@@ -58,7 +58,7 @@ export function InternationalizationLayout({children, locale}: LayoutProps<"/"> 
   // Enable static rendering
   setRequestLocale(locale);
 
-  return <html lang={locale}>
+  return <html>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased`}
       >

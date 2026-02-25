@@ -9,7 +9,7 @@ Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl s
 	"portfolio": "Portfolio",
 	"music": {
 		"music": "Musik",
-		"description": `Projekte an denen ich als Produzent, Komponist und Sound-Designer arbeite.`,
+		"description": `Projekte an denen ich als Produzent, Komponist und Sound-Designer gearbeitet habe.`,
 	},
 	"motto": "Mein Ziel ist es, mit coolen Menschen coole Sachen zu kreieren.",
 	"characteristics": {
@@ -87,4 +87,5 @@ Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl s
 		</Text>
 		`,
 	},
+	"createdBy": "Designt und entwickelt von Felix Trutschnig"
 } as const

@@ -83,4 +83,5 @@ Phone: +43 678 125 10 52`,
 		</Text>
 		`,
 	},
+	"createdBy": "Designed and built by Felix Trutschnig"
 } as const

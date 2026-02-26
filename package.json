@@ -12,7 +12,8 @@
     "next": "16.1.6",
     "next-intl": "^4.8.3",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "web-audio-api": "^0.2.2"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

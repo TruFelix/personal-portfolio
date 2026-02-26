@@ -9,14 +9,19 @@ import { useWindowSize } from "../utils";
 const PLAY_ICON_PATH = "M9.09327 0L18.1865 15.75H0L9.09327 0Z";
 const PAUSE_ICON_PATH = "M18 0H7.86805e-08L0 4.48571L18 4.48571V0ZM18 13.4714L1.18021e-07 13.4714L7.86805e-08 18H18L18 13.4714Z";
 
-interface AudioPlayerProps {
+type WaveformDataType = {
+	audioUrl: string,
+	[barCount: number]: number[]
+}
+
+export type AudioPlayerProps = {
 	audioUrl: string,
 	barPlayedColor?: string,
 	barNotPlayedColor?: string,
 	barPlayedNotPlayingColor?: string,
 	barsMaxHeight?: number,
 	barsCount?: number,
-}
+};
 
 /**
  * Plays a given [audioUrl], shows its waveform and a volume knob.
@@ -42,16 +47,27 @@ export function AudioPlayer({
 
 	const [isAudioLoaded, setIsAudioLoaded] = useState<boolean>(false);
 	const [isPlaying, setIsPlaying] = useState(false);
+	const [loadedWaveformData, setLoadedWaveformData] = useState<WaveformDataType | undefined>();
 	const [waveformData, setWaveformData] = useState<number[]>(new Array(barsCount).fill(0));
 	const [volume, setVolume] = useState<number>(8);
 	const [errorLoading, setErrorLoading] = useState<boolean>(false);
 
 	const barsContainerRef = useRef<HTMLDivElement | null>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
-	const audioBufferRef = useRef<AudioBuffer | null>(null);
 
-	const sourceNodeRef = useRef<AudioBufferSourceNode | null>(null);
-	const gainNodeRef = useRef<GainNode | null>(null);
+	const memoizedWaveformData = loadedWaveformData ? loadedWaveformData[barsCount] : waveformData;
+
+	useEffect(() => {
+		// console.log("barsCount: ", barsCount);
+		setWaveformData(memoizedWaveformData);
+
+		if (barsContainerRef.current && globalPausedAtRef.current !== undefined) {
+			// don't use currentTime, because it has already setup start and pause times
+			updateBarIndication(globalPausedAtRef.current);
+		}
+	}, [isAudioLoaded, memoizedWaveformData]);
+
+	const audioNodeRef = useRef<HTMLAudioElement | null>(null);
 
 	const globalStartTimeRef = useRef<number>(0); // time from audioAPI
 	const globalPausedAtRef = useRef<number>(0);
@@ -69,33 +85,12 @@ export function AudioPlayer({
 
 	// Initialize AudioContext and load data
 	useEffect(() => {
-		const loadingInterval = setInterval(() => animateBarsLoading(0.75, 3), 100);
-		loadAudio().then(() => clearInterval(loadingInterval));
-
-
 		return () => {
 			if (audioContextRef.current) {
 				audioContextRef.current.close();
 			}
 		};
 	}, [audioUrl]);
-
-	const memoizedWaveformData = useMemo(() => {
-		if (isAudioLoaded && audioBufferRef.current) return CalculateWaveform(barsCount) as number[];
-		return waveformData;
-	}, [isAudioLoaded, barsCount, isMobile]);
-
-	useEffect(() => {
-		// console.log("barsCount: ", barsCount);
-		setWaveformData(memoizedWaveformData);
-
-		if (audioBufferRef.current) {
-			setWaveformData(memoizedWaveformData);
-
-			// don't use currentTime, because it has already setup start and pause times
-			updateBarIndication(globalPausedAtRef.current);
-		}
-	}, [isAudioLoaded, memoizedWaveformData]);
 
 	useEffect(() => {
 		const cleanup = () => {
@@ -118,17 +113,26 @@ export function AudioPlayer({
 	}, [isPlaying, activePlayer?.url]);
 
 	useEffect(() => {
-		gainNodeRef.current?.gain.setValueAtTime(volumePercent, 0);
+		// gainNodeRef.current?.gain.setValueAtTime(volumePercent, 0);
+		if (audioNodeRef.current) audioNodeRef.current.volume = volumePercent;
 
 		barsContainerRef.current?.childNodes.forEach(b => updateBarHeight(b as HTMLElement));
 	}, [volume]);
 
 	const togglePlay = async (e: MouseEvent) => {
-		if (!audioContextRef.current || !audioBufferRef.current) return;
 
 		if (isPlaying) {
 			Pause();
 		} else {
+			// if (!audioContextRef.current) {
+			// 	const loadingInterval = setInterval(() => animateBarsLoading(0.75, 3), 100);
+			// 	await loadAudio();
+			// 	const alreadyLoaded = audioNode.hasAttribute("loaded");
+			// 	// if (!alreadyLoaded) {
+			// 	// 	// await new Promise(r => audioNode.onloadeddata(r));
+			// 	// }
+			// 	clearInterval(loadingInterval);
+			// }
 			await Play();
 		}
 	};
@@ -142,6 +146,9 @@ export function AudioPlayer({
 				)}
 				data-name="AudioPlayer"
 			>
+				<audio ref={audioNodeRef} playsInline onLoadedData={ev => {
+					audioNodeRef.current?.setAttribute("loaded", "true");
+				}} />
 				{/* Play/Pause Icon Container */}
 				<div
 					className="size-[22px] mx-2 ml-3 flex justify-items-center items-center"
@@ -184,8 +191,8 @@ export function AudioPlayer({
 						const height = Math.max(3, value * barsMaxHeight * volumePercent);
 
 						let timestampInSeconds: number | null = null;
-						if (audioBufferRef.current && audioContextRef.current) {
-							const audioLengthInSeconds = audioBufferRef.current?.duration ?? 0
+						if (audioNodeRef.current && audioContextRef.current) {
+							const audioLengthInSeconds = audioNodeRef.current.duration ?? 0
 							const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount;
 							timestampInSeconds = timeAdvancePerBarInSeconds * (index + 1);
 						}
@@ -213,11 +220,17 @@ export function AudioPlayer({
 										e.bubbles = false;
 										e.preventDefault();
 
-										if (sourceNodeRef.current) {
+										if (!audioNodeRef.current?.paused) {
 											Pause();
 										}
 
 										PlayFrom(timestampInSeconds);
+									} else {
+										if (!audioNodeRef.current?.paused) {
+											Pause();
+										}
+
+										Play();
 									}
 								}}
 								onMouseDown={Pause}
@@ -246,6 +259,28 @@ export function AudioPlayer({
 	}
 
 	async function Play() {
+		const audioNode = audioNodeRef.current!;
+
+		if (!audioNode.paused) {
+			// don't allow to just set time
+			return;
+		}
+
+		audioNode.src = audioUrl;
+
+		if (!isAudioLoaded) {
+			const loadingInterval = setInterval(() => animateBarsLoading(0.75, 3), 100);
+			await loadAudio();
+			const alreadyLoaded = audioNode.hasAttribute("loaded");
+			if (!alreadyLoaded) {
+				console.log("waiting for audiofile to load")
+				// await new Promise(r => audioNode.onloadeddata(r));
+			}
+			clearInterval(loadingInterval);
+		}
+
+		audioNode.currentTime = audioContextRef.current!.currentTime;
+
 		if (activePlayer?.url != audioUrl) {
 			activePlayer?.Pause();
 		}
@@ -259,33 +294,9 @@ export function AudioPlayer({
 			await audioContextRef.current.resume();
 		}
 
-		if (sourceNodeRef.current) {
-			// to set the time, just call play on the sourceNodeRef.current
-			return;
-		}
-		const source = audioContextRef.current.createBufferSource();
-
-		source.buffer = audioBufferRef.current;
-
-		const gainNode = audioContextRef.current.createGain();
-		gainNode.gain.value = volumePercent;
-		gainNode.connect(audioContextRef.current.destination);
-		source.connect(gainNode);
-
-		// Loop playback for demo purposes? Or just stop at end?
-		// Let's loop it or just handle end.
-		source.onended = () => {
-			// Only reset if it wasn't stopped manually
-			// But for this simple implementation, we might not strictly need precise state syncing
-			// if user just toggles.
-			// We'll leave it as manual toggle for now.
-		};
-
-		// console.log("was paused at: ", globalPausedAtRef.current);
-		source.start(0, globalPausedAtRef.current);
 		globalStartTimeRef.current = audioContextRef.current.currentTime;
-		sourceNodeRef.current = source;
-		gainNodeRef.current = gainNode;
+		audioNode.play();
+		audioNode.currentTime = globalPausedAtRef.current;
 		setIsPlaying(true);
 		setActivePlayer?.({
 			url: audioUrl,
@@ -294,9 +305,8 @@ export function AudioPlayer({
 	}
 
 	function Pause() {
-		if (sourceNodeRef.current) {
-			sourceNodeRef.current.stop();
-			sourceNodeRef.current = null;
+		if (!audioNodeRef.current?.paused) {
+			audioNodeRef.current!.pause();
 		}
 		globalPausedAtRef.current += (audioContextRef.current?.currentTime ?? 0) - globalStartTimeRef.current;
 		console.log("paused at: ", globalPausedAtRef.current);
@@ -318,7 +328,7 @@ export function AudioPlayer({
 		if (!barsContainerRef.current) return;
 		if (errorLoading) return;
 
-		const audioLengthInSeconds = audioBufferRef.current?.duration ?? 0;
+		const audioLengthInSeconds = audioNodeRef.current?.duration ?? 0;
 		const timeAdvancePerBarInSeconds = audioLengthInSeconds / barsCount;
 		let timestampInSeconds = 0.000001;
 
@@ -376,55 +386,23 @@ export function AudioPlayer({
 			const ctx = new AudioContext();
 			audioContextRef.current = ctx;
 
-			const response = await fetch(audioUrl);
+			const response = await fetch(`/api/waveform?audioUrl=${encodeURIComponent(audioUrl)}`);
+
 			if (!response.ok) {
 				setIsAudioLoaded(false);
 				setErrorLoading(true);
 				return;
 			}
-			const arrayBuffer = await response.arrayBuffer();
-			const decodedBuffer = await ctx.decodeAudioData(arrayBuffer);
-			audioBufferRef.current = decodedBuffer;
+
+			setLoadedWaveformData(await response.json());
+			updateBarIndication(globalPausedAtRef.current);
+
 			setIsAudioLoaded(true);
 		} catch (error) {
 			console.error("Failed to load audio:", error);
 			setErrorLoading(true);
 			setIsAudioLoaded(false);
 		}
-	}
-
-	function CalculateWaveform(bars: number): number[] | undefined {
-		if (!audioBufferRef.current) return undefined;
-		const normalizedWaveformData = NormalizeWaveform(Waveform(audioBufferRef.current, bars));
-		return normalizedWaveformData;
-		// setWaveformData(normalizedWaveformData);
-	}
-
-	function NormalizeWaveform(waveformData: number[]): number[] {
-		const multiplier = Math.pow(Math.max(...waveformData), -1);
-		const normalizedWaveformData = waveformData.map(n => n * multiplier);
-		return normalizedWaveformData;
-	}
-
-	/**
-	 * Generates the waveform data from the raw audio
-	 * @param decodedBuffer the raw audio buffer
-	 * @returns
-	*/
-	function Waveform(decodedBuffer: AudioBuffer, totalWaveformpoints: number): number[] {
-		const rawData = decodedBuffer.getChannelData(0);
-		const blockSize = Math.floor(rawData.length / totalWaveformpoints);
-		const filteredData = [];
-
-		for (let i = 0; i < totalWaveformpoints; i++) {
-			let sum = 0;
-			for (let j = 0; j < blockSize; j++) {
-				sum += Math.abs(rawData[i * blockSize + j]);
-			}
-			filteredData.push(sum / blockSize);
-		}
-
-		return filteredData;
 	}
 	//#endregion
 }

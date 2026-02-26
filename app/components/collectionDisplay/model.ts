@@ -10,4 +10,5 @@ export interface Collection {
 export interface Song {
 	title: string;
 	url: string;
+	isAtmosAvailable?: boolean | undefined;
 }

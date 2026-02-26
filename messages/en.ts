@@ -22,6 +22,11 @@ I learned a lot during arranging, mixing, writing, sound selection, sound design
 		"samples": "samples",
 		"loops": "loops",
 	},
+	"atmosEnabledAltText": "Mixed with Dolby Atmos",
+	"mixedIn": "Mixed in ",
+
+	//
+
 	"imprint": {
 		"imprint": "Imprint",
 		"headline": "Information according to § 5 ECG and disclosure according to § 25 MedienG:",
@@ -39,6 +44,7 @@ Phone: +43 678 125 10 52`,
 		"purposeHeadline": "Purpose of the Website:",
 		"purpose": "Personal portfolio showcasing software development, design and music projects.",
 	},
+
 	"privacy": {
 		"privacy": "Privacy",
 		"richText": `
@@ -83,5 +89,7 @@ Phone: +43 678 125 10 52`,
 		</Text>
 		`,
 	},
+
+	//
 	"createdBy": "Designed and built by Felix Trutschnig"
 } as const

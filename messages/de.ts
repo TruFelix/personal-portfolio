@@ -11,7 +11,7 @@ Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl s
 		"music": "Musik",
 		"description": `Projekte an denen ich als Produzent, Komponist und Sound-Designer gearbeitet habe.`,
 	},
-	"motto": "Mein Ziel ist es, mit coolen Menschen coole Sachen zu kreieren.",
+	"motto": "Mit coolen Menschen coole Sachen erschaffen.",
 	"characteristics": {
 		"80s": "80er",
 		"lush": "weich",
@@ -22,7 +22,10 @@ Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl s
 		"samples": "Samples",
 		"loops": "loops",
 	},
+	"atmosEnabledAltText": "Gemixt mit Dolby Atmos",
+	"mixedIn": "Gemischt in ",
 
+	//
 	"imprint": {
 		"imprint": "Impressum",
 		"headline": "Information nach § 5 ECG und Impressum nach § 25 MedienG:",
@@ -40,7 +43,7 @@ Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl s
 		"purposeHeadline": "Verwendungszweck:",
 		"purpose": "Persönliches Portfolio zur Darstellung von Softwareentwicklung, Design und Music Projekten.",
 	},
-		"privacy": {
+	"privacy": {
 		"privacy": "Datenschutzerklärung",
 		"richText": `
 		<Title>Datenschutzerklärung</Title>
@@ -87,5 +90,6 @@ Ich habe viel gelernt während dem Arrangen, Mixen, Schreiben und Soundauswahl s
 		</Text>
 		`,
 	},
+	//
 	"createdBy": "Designt und entwickelt von Felix Trutschnig"
 } as const

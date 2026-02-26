@@ -17,9 +17,10 @@ export default async function MusicPortfolio() {
       years: "2023-2025",
       characteristics: [tC("personal"), tC("pads"), tC("synths"), tC("loops"), tC("samples")],
       songs: [
-        { title: "Lo Way", url: "/music/23_25/LoWay.mp3" },
-        { title: "sampler", url: "/music/23_25/sampler.mp3" },
-        { title: "BassFirst", url: "/music/23_25/BassFirst.mp3" },
+        { title: "Lo Way", url: "/music/23_25/LoWay.mp3", isAtmosAvailable: true },
+        { title: "Sampler", url: "/music/23_25/sampler.mp3", isAtmosAvailable: false },
+        { title: "BassFirst", url: "/music/23_25/BassFirst.mp3", isAtmosAvailable: false },
+        { title: "Stardust", url: "/music/23_25/Stardust.mp3", isAtmosAvailable: true },
       ]
     },
     {
@@ -29,11 +30,11 @@ export default async function MusicPortfolio() {
       characteristics: [tC("80s"), tC("lush"), tC("hollow"), tC("pads"), tC("synths"), tC("loops")],
       description: t("debris description"),
       songs: [
-        { title: "ding", url: "/music/debris/ding.mp3" },
+        { title: "Ding", url: "/music/debris/ding.mp3" },
         { title: "Swirl", url: "/music/debris/Swirl.mp3" },
-        { title: "Arc2 New Signals 1", url: "/music/debris/Arc2-NewSignals-1.mp3" },
-        { title: "Arc2 New Signals 2", url: "/music/debris/Arc2-NewSignals-2.mp3" },
-        { title: "Arc3 Fin 1", url: "/music/debris/Arc3-Fin-1.mp3" },
+        { title: "Arc2 New Signals 1", url: "/music/debris/Arc2-NewSignals-1.mp3", isAtmosAvailable: false },
+        { title: "Arc2 New Signals 2", url: "/music/debris/Arc2-NewSignals-2.mp3", isAtmosAvailable: true },
+        { title: "Arc3 Fin 1", url: "/music/debris/Arc3-Fin-1.mp3", isAtmosAvailable: false },
       ]
     }
   ];
@@ -52,7 +53,11 @@ export default async function MusicPortfolio() {
             {ts("description")}
           </span>
         </div>
-        <Collections className="max-w-2xl grid gap-15 mb-6" collections={collections} />
+        <Collections
+          className="max-w-2xl grid gap-15 mb-6" collections={collections}
+          mixedIn={t("mixedIn")}
+          mixedInAtmosAltText={t("atmosEnabledAltText")}
+        />
         {/* <Image
           alt="retro tape player"
           height="502"

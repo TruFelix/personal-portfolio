@@ -1,6 +1,6 @@
 "use client"
 
-import { MouseEvent, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { MouseEvent, useContext, useEffect, useRef, useState } from "react";
 import { ActivePlayerContext } from "../contexts";
 import Knob from "../knob/knob";
 import { useWindowSize } from "../utils";
@@ -42,75 +42,113 @@ export function AudioPlayer({
 	const { activePlayer, setActivePlayer } = useContext(ActivePlayerContext);
 
 	const size = useWindowSize(null);
-	const isMobile = size?.width ?? 0 < 600;
-	const [barsCount, setBarsCount] = useState<number>(isMobile ? 48 : 80);
+	const isMobile = (size?.width ?? 0) < 600;
+	const barsCount = isMobile ? 48 : 80;
+	// console.log("barsCount: ", barsCount);
 
-	const [isAudioLoaded, setIsAudioLoaded] = useState<boolean>(false);
-	const [isPlaying, setIsPlaying] = useState(false);
-	const [loadedWaveformData, setLoadedWaveformData] = useState<WaveformDataType | undefined>();
+	/** should play loading animation */
+	const [isAudioLoading, setIsAudioLoading] = useState<boolean>(false);
+	const [isAudioPlaying, setIsAudioPlaying] = useState<boolean>(false);
+	const [shouldBePlaying, setShouldBePlaying] = useState(false);
+	const [loadedWaveformData, setLoadedWaveformData] = useState<WaveformDataType | null | undefined>();
 	const [waveformData, setWaveformData] = useState<number[]>(new Array(barsCount).fill(0));
 	const [volume, setVolume] = useState<number>(8);
 	const [errorLoading, setErrorLoading] = useState<boolean>(false);
 
+	/** Point in globalTime where playback was stopped by the user */
+	const globalPausedAtRef = useRef<number>(0);
+	const globalStartedTimeRef = useRef<number>(0);
 	const barsContainerRef = useRef<HTMLDivElement | null>(null);
 	const audioContextRef = useRef<AudioContext | null>(null);
+	const loadingAnimationRef = useRef<NodeJS.Timeout | undefined>(undefined);
 
-	const memoizedWaveformData = loadedWaveformData ? loadedWaveformData[barsCount] : waveformData;
-
-	useEffect(() => {
-		// console.log("barsCount: ", barsCount);
-		setWaveformData(memoizedWaveformData);
-
-		if (barsContainerRef.current && globalPausedAtRef.current !== undefined) {
-			// don't use currentTime, because it has already setup start and pause times
-			updateBarIndication(globalPausedAtRef.current);
-		}
-	}, [isAudioLoaded, memoizedWaveformData]);
+	// null indicates that it is currently loading
+	// undefined would mean not loading
+	// a value means loaded
+	const isWaveformDataLoading = loadedWaveformData === null;
+	const isLoading = isWaveformDataLoading || isAudioLoading;
 
 	const audioNodeRef = useRef<HTMLAudioElement | null>(null);
 
-	const globalStartTimeRef = useRef<number>(0); // time from audioAPI
-	const globalPausedAtRef = useRef<number>(0);
-
 	// required to stop the indication of progress by animating the color of the bars
-	const currentAnimQueue = useRef<number>(0);
+	const currentAnimQueue = useRef<number | undefined>(undefined);
 
-	const volumePercent = useMemo(() => (volume - minVolume) / maxVolume, [volume, minVolume, maxVolume]);
+	const volumePercent = (volume - minVolume) / maxVolume;
 
+	// select the right waveformdata
+	const selectedWaveformData = loadedWaveformData ? loadedWaveformData[barsCount] : waveformData;
+	// useEffect(() => {
+	// 	// console.log("barsCount: ", barsCount);
+	// 	setWaveformData(selectedWaveformData);
+	// }, [shouldBePlaying, selectedWaveformData]);
+
+	// handle loading indication
 	useEffect(() => {
-		// console.log("size: ", size?.width, "barsCount: ", barsCount);
-		const isMobile = (size?.width ?? 0) < 600;
-		setBarsCount(isMobile ? 48 : 80);
-	}, [size]);
+		if (!shouldBePlaying) {
+			ensureLoadingAnimationStopped();
+			ensureUpdateBarIndicationStopped();
+			updateBarIndication(globalPausedAtRef.current);
+			return;
+		}
 
-	// Initialize AudioContext and load data
+		if (isLoading) {
+			ensureLoadingAnimation();
+		} else {
+			ensureLoadingAnimationStopped();
+			setWaveformData(selectedWaveformData);
+			updateBarIndication(globalPausedAtRef.current);
+		}
+
+		if (isAudioPlaying) {
+			ensureUpdateBarIndicationRunning();
+		} else {
+			ensureUpdateBarIndicationStopped()
+
+		}
+	}, [isLoading, isAudioPlaying, shouldBePlaying]);
+
+	// attach evHandlers to audioNode
+	// these evHandlers update isAudioPlaying for syncing playing and ui
 	useEffect(() => {
-		return () => {
-			if (audioContextRef.current) {
-				audioContextRef.current.close();
-			}
+		const cur = audioNodeRef.current;
+		if (!cur) return;
+
+		const _handlePlay = (reason: string) => () => {
+			console.log("playing: ", reason);
+			setIsAudioPlaying(true);
+			setIsAudioLoading(false);
+		}
+
+		const _handlePause = () => {
+			console.log("paused by something");
+			setIsAudioPlaying(false)
 		};
-	}, [audioUrl]);
+		const _handleLoad = (reason: string) => () => {
+			console.log("loading audio: ", reason);
+			setIsAudioLoading(true);
+			setIsAudioPlaying(false);
+		}
 
-	useEffect(() => {
 		const cleanup = () => {
-			cancelAnimationFrame(currentAnimQueue.current);
-		};
-
-		// don't use currentTime, because it has already setup start and pause times
-		updateBarIndication(globalPausedAtRef.current);
-
-		if (!isPlaying || (activePlayer && activePlayer.url != audioUrl)) {
-			cleanup();
-			return cleanup;
+			cur.removeEventListener("play", _handlePlay("for some reason"));
+			cur.removeEventListener("playing", _handlePlay("'playing'"));
+			cur.removeEventListener("pause", _handlePause);
+			cur.removeEventListener("loadstart", _handleLoad("loadStart"));
+			cur.removeEventListener("load", _handleLoad("load"));
+			cur.removeEventListener("waiting", _handleLoad("waiting"));
+			// cur.removeEventListener("loadeddata", _handleLoaded);
 		}
 
-		if ((activePlayer && activePlayer.url === audioUrl) || !activePlayer) {
-			currentAnimQueue.current = window.requestAnimationFrame(queueUpdateBarIndication);
-		}
+		cur.addEventListener("play", _handlePlay("for some reason"));
+		cur.addEventListener("playing", _handlePlay("'playing'"));
+		cur.addEventListener("pause", _handlePause);
+		cur.addEventListener("loadstart", _handleLoad("loadStart"));
+		cur.addEventListener("load", _handleLoad("load"));
+		cur.addEventListener("waiting", _handleLoad("waiting"));
+		// cur.addEventListener("loadeddata", _handleLoaded);
 
 		return cleanup;
-	}, [isPlaying, activePlayer?.url]);
+	}, [audioNodeRef, audioNodeRef.current])
 
 	useEffect(() => {
 		// gainNodeRef.current?.gain.setValueAtTime(volumePercent, 0);
@@ -120,29 +158,75 @@ export function AudioPlayer({
 	}, [volume]);
 
 	const togglePlay = async (e: MouseEvent) => {
-
-		if (isPlaying) {
+		if (isAudioPlaying || shouldBePlaying) {
 			Pause();
 		} else {
-			// if (!audioContextRef.current) {
-			// 	const loadingInterval = setInterval(() => animateBarsLoading(0.75, 3), 100);
-			// 	await loadAudio();
-			// 	const alreadyLoaded = audioNode.hasAttribute("loaded");
-			// 	// if (!alreadyLoaded) {
-			// 	// 	// await new Promise(r => audioNode.onloadeddata(r));
-			// 	// }
-			// 	clearInterval(loadingInterval);
-			// }
 			await Play();
 		}
 	};
+
+	async function PlayFrom(start: number) {
+		globalPausedAtRef.current = start;
+		// console.log("Starting from ", start);
+		Play();
+	}
+
+	async function Play() {
+		const audioNode = audioNodeRef.current!;
+
+		if (!audioNode.paused) {
+			// don't allow to just set time, use audioNodeRef.current.currentTime = ...;
+			return;
+		}
+
+		audioNode.src = audioUrl;
+		setShouldBePlaying(true);
+
+		if (!loadedWaveformData) {
+			ensureLoadingAnimation();
+			await loadAudio();
+		}
+
+		audioNode.currentTime = audioContextRef.current!.currentTime;
+
+		if (activePlayer?.url !== audioUrl) {
+			activePlayer?.Pause();
+		}
+
+		if (!audioContextRef.current) {
+			console.error("audiocontext uninitialized");
+			return;
+		}
+
+		if (audioContextRef.current.state === 'suspended') {
+			await audioContextRef.current.resume();
+		}
+
+		audioNode.play();
+		audioNode.currentTime = globalPausedAtRef.current;
+		globalStartedTimeRef.current = globalPausedAtRef.current;
+		setActivePlayer?.({
+			url: audioUrl,
+			Pause,
+		});
+	}
+
+	function Pause() {
+		globalPausedAtRef.current = audioNodeRef.current?.currentTime ?? 0;
+
+		if (!audioNodeRef.current?.paused) {
+			audioNodeRef.current!.pause();
+		}
+
+		setShouldBePlaying(false);
+	}
 
 	return (
 		<div className="grid grid-flow-col grid-cols-[1fr_auto] gap-1.5">
 			<button
 				className={cn(
 					"grid grid-flow-col grid-cols-[auto_1fr] items-center block cursor-pointer rounded-[6px] w-full h-[48px] transition-colors duration-300 ease-in-out",
-					isPlaying ? "bg-neutral-100 dark:bg-neutral-700" : "bg-neutral-100 dark:bg-[rgba(138,138,138,0.65)]"
+					shouldBePlaying ? "bg-neutral-100 dark:bg-neutral-700" : "bg-neutral-100 dark:bg-[rgba(138,138,138,0.65)]"
 				)}
 				data-name="AudioPlayer"
 			>
@@ -158,9 +242,9 @@ export function AudioPlayer({
 				>
 					<div className={cn(
 						"flex-none transition-all duration-300",
-						isPlaying ? "size-[18px]" : "size-[21px]"
+						shouldBePlaying ? "size-[18px]" : "size-[21px]"
 					)}>
-						{isPlaying ? (
+						{shouldBePlaying ? (
 							// Pause Icon
 							<svg className="rotate-90" fill="none" preserveAspectRatio="1" viewBox="0 0 18 18">
 								<path
@@ -197,6 +281,8 @@ export function AudioPlayer({
 							timestampInSeconds = timeAdvancePerBarInSeconds * (index + 1);
 						}
 						const currentT = currentTime();
+						const bgC = barBackgroundColorFromTimestamp(timestampInSeconds ?? 0, currentT);
+						console.log("currentT: ", currentT, " bgC: ", bgC);
 
 						return (
 							<div
@@ -204,7 +290,7 @@ export function AudioPlayer({
 								className={cn(
 									errorLoading && "bg-orange-600",
 									"bg-zinc-300 grow min-w-[1px] rounded-[1px] transition-all duration-300 mx-[1px]",
-									isPlaying && "dark:shadow-[0px_0px_10px_0px_var(--primary)]",
+									shouldBePlaying && "dark:shadow-[0px_0px_10px_0px_var(--primary)]",
 									// isPlaying && (timestampInSeconds < currentT
 									// 	? "shadow-[0px_0px_10px_0px_var(--color-primary-transparent-500)]"
 									// 	: `shadow-[0px_0px_5px_0px_gray] shadow-color-[gray]`)
@@ -212,10 +298,11 @@ export function AudioPlayer({
 								data-maxheight={height}
 								style={{
 									height: `${height}px`,
-									backgroundColor: barBackgroundColorFromTimestamp(timestampInSeconds ?? 0, currentT),
+									backgroundColor: bgC,
 									// boxShadow: barShadowFromTimestamp(timestampInSeconds, currentT)
 								}}
 								onMouseUp={e => {
+									console.log("log")
 									if (timestampInSeconds != null) {
 										e.bubbles = false;
 										e.preventDefault();
@@ -231,6 +318,7 @@ export function AudioPlayer({
 										}
 
 										Play();
+										console.log("shouldPlay by press on empty waveform")
 									}
 								}}
 								onMouseDown={Pause}
@@ -252,79 +340,46 @@ export function AudioPlayer({
 		</div>
 	);
 
-	async function PlayFrom(start: number) {
-		globalPausedAtRef.current = start;
-		// console.log("Starting from ", start);
-		Play();
-	}
-
-	async function Play() {
-		const audioNode = audioNodeRef.current!;
-
-		if (!audioNode.paused) {
-			// don't allow to just set time
-			return;
-		}
-
-		audioNode.src = audioUrl;
-
-		if (!isAudioLoaded) {
-			const loadingInterval = setInterval(() => animateBarsLoading(0.75, 3), 100);
-			await loadAudio();
-			const alreadyLoaded = audioNode.hasAttribute("loaded");
-			if (!alreadyLoaded) {
-				console.log("waiting for audiofile to load")
-				// await new Promise(r => audioNode.onloadeddata(r));
-			}
-			clearInterval(loadingInterval);
-		}
-
-		audioNode.currentTime = audioContextRef.current!.currentTime;
-
-		if (activePlayer?.url != audioUrl) {
-			activePlayer?.Pause();
-		}
-
-		if (!audioContextRef.current) {
-			console.error("audiocontext uninitialized");
-			return;
-		}
-
-		if (audioContextRef.current.state === 'suspended') {
-			await audioContextRef.current.resume();
-		}
-
-		globalStartTimeRef.current = audioContextRef.current.currentTime;
-		audioNode.play();
-		audioNode.currentTime = globalPausedAtRef.current;
-		setIsPlaying(true);
-		setActivePlayer?.({
-			url: audioUrl,
-			Pause,
-		});
-	}
-
-	function Pause() {
-		if (!audioNodeRef.current?.paused) {
-			audioNodeRef.current!.pause();
-		}
-		globalPausedAtRef.current += (audioContextRef.current?.currentTime ?? 0) - globalStartTimeRef.current;
-		console.log("paused at: ", globalPausedAtRef.current);
-		setIsPlaying(false);
-		if (activePlayer?.url == audioUrl) setActivePlayer?.(null);
-	}
-
 	function updateBarHeight(bar: HTMLElement): void {
 		const maxHeight = Number.parseFloat(bar.getAttribute("data-maxheight")!);
 		bar.style.height = maxHeight * volumePercent + "px";
 	}
 
-	function queueUpdateBarIndication(): void {
-		currentAnimQueue.current = requestAnimationFrame(queueUpdateBarIndication);
+	function ensureUpdateBarIndicationRunning(): void {
+		console.log("ensureUpdateBarIndicationRunning");
+		if (currentAnimQueue.current) return;
+		__queueUpdateBarIndication();
+	}
+
+	function __queueUpdateBarIndication() {
+		currentAnimQueue.current = requestAnimationFrame(__queueUpdateBarIndication);
 		updateBarIndication(currentTime());
 	}
 
+	function ensureUpdateBarIndicationStopped(): void {
+		console.log("ensureUpdateBarIndicationStopped");
+		if (!currentAnimQueue.current) return;
+
+		cancelAnimationFrame(currentAnimQueue.current)
+		currentAnimQueue.current = undefined;
+
+		updateBarIndication(currentTime());
+	}
+
+	function ensureLoadingAnimation() {
+		if (!loadingAnimationRef.current) {
+			loadingAnimationRef.current = setInterval(() => animateBarsLoading(0.75, 3), 100);
+		}
+	}
+	function ensureLoadingAnimationStopped() {
+		if (!loadingAnimationRef.current) return;
+
+		clearInterval(loadingAnimationRef.current);
+		loadingAnimationRef.current = undefined;
+	}
+
 	function updateBarIndication(currentPlaytime: number): void {
+		// console.log("updateBarIndication: ", currentPlaytime);
 		if (!barsContainerRef.current) return;
 		if (errorLoading) return;
 
@@ -341,11 +396,9 @@ export function AudioPlayer({
 		}
 	}
 
-	function barBackgroundColorFromTimestamp(timestampInSeconds: number, currentPlaytime: number): string | undefined {
-		if (!isAudioLoaded) return undefined;
-
+	function barBackgroundColorFromTimestamp(timestampInSeconds: number, currentPlaytime: number): string {
 		if (timestampInSeconds <= currentPlaytime) {
-			if (isPlaying) {
+			if (shouldBePlaying) {
 				return barPlayedColor;
 			} else {
 				return barPlayedNotPlayingColor;
@@ -354,11 +407,11 @@ export function AudioPlayer({
 			return barNotPlayedColor;
 		}
 	}
-	function barShadowFromTimestamp(timestampInSeconds: number, currentPlaytime: number): string | null | undefined {
+	function barShadowFromTimestamp(timestampInSeconds: number, currentPlaytime: number): string | null {
 		const isDarkTheme = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)')?.matches;
 		if (isDarkTheme) return null;
 
-		if (!isPlaying) return null;
+		if (!shouldBePlaying) return null;
 
 		if (timestampInSeconds < currentPlaytime) {
 			return "0px 0px 10px 0px var(--color-primary-transparent-500)";
@@ -368,7 +421,8 @@ export function AudioPlayer({
 	}
 
 	function currentTime(): number {
-		const t = (audioContextRef.current?.currentTime ?? 0) - globalStartTimeRef.current + globalPausedAtRef.current;
+		const t = audioNodeRef.current?.currentTime || globalPausedAtRef.current || 0;
+		// console.log("currentTime: ", t)
 		return t;
 	}
 
@@ -381,6 +435,7 @@ export function AudioPlayer({
 
 	//#region audio loading and computation
 	async function loadAudio() {
+		setLoadedWaveformData(null);
 		try {
 			const AudioContext = window.AudioContext;
 			const ctx = new AudioContext();
@@ -389,19 +444,15 @@ export function AudioPlayer({
 			const response = await fetch(`/api/waveform?audioUrl=${encodeURIComponent(audioUrl)}`);
 
 			if (!response.ok) {
-				setIsAudioLoaded(false);
 				setErrorLoading(true);
 				return;
 			}
 
 			setLoadedWaveformData(await response.json());
 			updateBarIndication(globalPausedAtRef.current);
-
-			setIsAudioLoaded(true);
 		} catch (error) {
 			console.error("Failed to load audio:", error);
 			setErrorLoading(true);
-			setIsAudioLoaded(false);
 		}
 	}
 	//#endregion

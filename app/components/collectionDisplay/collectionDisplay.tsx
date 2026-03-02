@@ -49,7 +49,7 @@ export default function CollectionDisplay({ collection, mixedIn, mixedInAtmosAlt
 						<DolbyAtmos
 							height={30}
 							width={100}
-							className={`inline h-[30px] ${song.isAtmosAvailable ? "fill-black" : "fill-stone-200"}`}
+							className={`inline h-[30px] ${song.isAtmosAvailable ? "fill-black dark:fill-stone-200" : "fill-stone-300 dark:fill-zinc-600"}`}
 							alt={mixedInAtmosAltText}
 						/>
 					</span>
